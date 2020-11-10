@@ -13,5 +13,7 @@ UCLASS()
 class NGG_API UMyNGGAlgorithmMarchingCube : public UNGGAlgorithmBase
 {
 	GENERATED_BODY()
-	
+
+public:
+	void TEST(float& rFloat) override {};
 };

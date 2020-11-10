@@ -13,5 +13,9 @@ UCLASS()
 class NGG_API UNGGAlgorithmBase : public UObject
 {
 	GENERATED_BODY()
+
+public:
+	UFUNCTION()
+		virtual void TEST(float& rFloat) PURE_VIRTUAL(UNGGAlgorithmBase::TEST, );
 	
 };
