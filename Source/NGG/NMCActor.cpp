@@ -36,7 +36,7 @@ void ANMCActor::GenerateRandomizedMesh()
 				// Get a terrain height using regular old Perlin noise.
 				float thisHeight = SectionSize.Z *
 					((FMath::PerlinNoise3D(FVector(
-					(((float)x + GetActorLocation().X + 0.001f) / CubeResolution.X) / FeatureSize,
+						(((float)x + GetActorLocation().X + 0.001f) / CubeResolution.X) / FeatureSize,
 						(((float)y + GetActorLocation().Y + 0.001f) / CubeResolution.Y) / FeatureSize,
 						GetActorLocation().Z)
 					) + 1.0f) / 2.0f);
@@ -51,42 +51,36 @@ void ANMCActor::GenerateRandomizedMesh()
 	ItlCreateFullMeshData();
 }
 
-void ANMCActor::RemoveDensity(FVector LocationInWS, FVector HitNormal)
+void ANMCActor::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount)
 {
+	int BuildModifier = bAddTerrain ? -1 : 1;
+
 	FVector Location;
-	if (ItlGetContainingCubeVector(LocationInWS, Location, false) && TerrainMap.Contains(Location))
+	ItlGetContainingCubeVector(LocationInWS, Location);
+
+	int32 XOffset = FMath::CeilToInt(BrushSize / CubeResolution.X) * CubeResolution.X;
+	int32 YOffset = FMath::CeilToInt(BrushSize / CubeResolution.Y) * CubeResolution.Y;
+	int32 ZOffset = FMath::CeilToInt(BrushSize / CubeResolution.Z) * CubeResolution.Z;
+	
+	for (int32 x = Location.X - XOffset; x < Location.X + XOffset; x += CubeResolution.X)
 	{
-		TerrainMap.Emplace(Location, TerrainMap[Location] + DensityChange);
-
-		//DEBUG STUFF
-		DrawDebugBox(GetWorld(), Location + GetActorLocation(), CubeResolution / 2.0f, FColor::Red);
-		DrawDebugPoint(GetWorld(), Location + GetActorLocation(), 10.0f, FColor::Blue);
-
-		ItlUpdateSection();
+		for (int32 y = Location.Y - YOffset; y < Location.Y + YOffset; y += CubeResolution.Y)
+		{
+			for (int32 z = Location.Z - ZOffset; z < Location.Z + ZOffset; z += CubeResolution.Z)
+			{
+				FVector OffsetPoint(x,y,z);
+				float Distance = FVector::Distance(OffsetPoint, Location);
+				if (Distance < BrushSize && TerrainMap.Contains(OffsetPoint))
+				{
+					float ModificationAmount = SurfaceAmount /*/ Distance*/ * BuildModifier;
+					TerrainMap.Emplace(OffsetPoint, TerrainMap[OffsetPoint] + ModificationAmount);
+				}
+				
+			}
+		}
 	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(1, 1, FColor::Green, TEXT("LOCATION NOT IN CUBES"));
-	}
-}
 
-void ANMCActor::AddDensity(FVector LocationInWS, FVector HitNormal)
-{
-	FVector Location;
-	if (ItlGetContainingCubeVector(LocationInWS, Location) && TerrainMap.Contains(Location))
-	{
-		TerrainMap.Emplace(Location, TerrainMap[Location] - DensityChange);
-
-		//DEBUG STUFF
-		DrawDebugBox(GetWorld(), Location + GetActorLocation(), CubeResolution / 2.0f, FColor::Red);
-		DrawDebugPoint(GetWorld(), Location + GetActorLocation(), 10.0f, FColor::Blue);
-
-		ItlUpdateSection();
-	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(1, 1, FColor::Green, TEXT("LOCATION NOT IN CUBES"));
-	}
+	ItlUpdateSection();
 }
 
 // Called when the game starts or when spawned
@@ -294,27 +288,6 @@ FVector ANMCActor::ItlDetermineHitDirection(FVector HitNormal)
 void ANMCActor::OnConstruction(const FTransform & Transform)
 {
 
-	if (bUseCustomChunkSize)
-	{
-		// We have to ensure that the chunk is smaller than the entire section...
-		CustomChunkSize.X = CustomChunkSize.X > SectionSize.X ? SectionSize.X : CustomChunkSize.X;
-		CustomChunkSize.Y = CustomChunkSize.Y > SectionSize.Y ? SectionSize.Y : CustomChunkSize.Y;
-		CustomChunkSize.Z = CustomChunkSize.Z > SectionSize.Z ? SectionSize.Z : CustomChunkSize.Z;
-	}
-	else
-		CustomChunkSize = SectionSize;
-
-
-	////First everything must be setup
-	//bool bConstruct = IsValid(StartMesh) && IsValid(StartMeshComponent) && IsValid(ProceduralMeshComponent);
-	////And the mesh must be actually changed (otherwise this would be expensive...)
-	//bConstruct = bConstruct && StartMesh != StartMeshComponent->GetStaticMesh();
-	//if (bConstruct)
-	//{
-	//	ProceduralMeshComponent->ClearAllMeshSections();
-	//	StartMeshComponent->SetStaticMesh(StartMesh);
-	//	UKismetProceduralMeshLibrary::CopyProceduralMeshFromStaticMeshComponent(StartMeshComponent, 0, ProceduralMeshComponent, true);
-	//}
 }
 
 // Called every frame

@@ -2,7 +2,11 @@
 
 #pragma once
 
+// INTERNALS
 #include "NGGAlgorithmBase.h"
+
+// UNREAL 
+#include "ProceduralMeshComponent.h"
 
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
@@ -24,8 +28,18 @@ public:
 	// Sets default values for this actor's properties
 	ANGGChunk();
 
+	// The algorithm that you want to use internally for the mesh generation
+	// Currently available:
+	//	- Marching Cube
+	//  - Dual Contouring (TBD!)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chunk")
 		EUsedAlgorithm Algorithm = EUsedAlgorithm::MARCHING_CUBE;
+	// The extents of this chunk
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Chunk")
+		FVector Extent;
+	// The internal procedural mesh component
+	UPROPERTY()
+		UProceduralMeshComponent* ProceduralMeshComponent;
 
 protected:
 	// Called when the game starts or when spawned

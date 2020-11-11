@@ -17,47 +17,12 @@ OPEN TODOS:
 -create parent class NativeGeometryGeneratorAlgorithm
 -Have NGGA_MarchingCubes & NGGA_DualContouring(which is yet to be implemented but looks doable look at: https://www.boristhebrave.com/2018/04/15/dual-contouring-tutorial/)
 -have section-owning class which controls interaction between sections
--mesh-adaptation brush (brush form + size)
+DONE mesh-adaptation brush (brush form + size) (via: https://github.com/Eldemarkki/Marching-Cubes-Terrain/blob/master/Assets/Scripts/Player/TerrainDeformer.cs)
 -LOD-levels?
 -save changes
 -have generation stored even when called before beginplay!
 
 */
-
-USTRUCT(BlueprintType)
-struct FMeshSection
-{
-	GENERATED_USTRUCT_BODY()
-
-		FMeshSection() {};
-	~FMeshSection() {};
-
-	void ClearMeshSection()
-	{
-		Vertices.Empty();
-		Triangles.Empty();
-		Normals.Empty();
-		UV.Empty();
-		Tangents.Empty();
-		VertexColors.Empty();
-	};
-
-
-	UPROPERTY()
-		TArray<FVector> Vertices;
-	UPROPERTY()
-		TArray<int32> Triangles;
-	UPROPERTY()
-		TArray<FVector> Normals;
-	UPROPERTY()
-		TArray<FVector2D> UV;
-	UPROPERTY()
-		TArray<FProcMeshTangent> Tangents;
-	UPROPERTY()
-		TArray<FColor> VertexColors;
-
-};
-
 
 UCLASS()
 class NGG_API ANMCActor : public AActor
@@ -90,14 +55,6 @@ public:
 	// Controls the total size of the procedural mesh
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Procedural")
 		FVector SectionSize = FVector(1000.0f, 1000.0f, 1000.0f);
-	// If there is no custom chunk size, then a section contains exactly 1 chunk
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Procedural")
-		bool bUseCustomChunkSize = false;
-	// Determines the indivdual chunk size. Must be <= SectionSize. Will be clamped to SectionSize otherwise!
-	// Internally this controls the individual sections of the procedural mesh.
-	UPROPERTY(EditAnywhere, BlueprintReadOnly, Category = "Procedural",
-		meta = (ClampMin = "1.0", EditCondition = "bUseCustomChunkSize"))
-		FVector CustomChunkSize = SectionSize;
 	// Controls how large the individual features are when generating noise
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Procedural",
 		meta = (ClampMin = "1.0"))
@@ -107,9 +64,6 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Procedural",
 		meta = (ClampMin = "0.0", ClampMax = "1.0"))
 		float TerrainSurface = 0.5f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Procedural",
-		meta = (ClampMin = "0.0"))
-		float DensityChange = 0.5f;
 	// defines whether smoother surface calculation is done or always use CubeSize/2 as split
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "Procedural")
 		bool bUseSmoothSurface = true;
@@ -117,12 +71,11 @@ public:
 		bool bCreateCollision = true;
 	//Allows for adding/subtracting density to geometry section
 	UFUNCTION(BlueprintCallable, Category = "Procedural")
-		void AddDensity(FVector LocationInWS, FVector HitNormal);
-	UFUNCTION(BlueprintCallable, Category = "Procedural")
-		void RemoveDensity(FVector LocationInWS, FVector HitNormal);
+		void EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount);
 	UFUNCTION(CallInEditor, Category = "Procedural")
 		void GenerateRandomizedMesh();
 
+	
 protected:
 	// Called when the game starts or when spawned
 	virtual void BeginPlay() override;
