@@ -25,6 +25,7 @@ void ANGGChunk::GenerateRandomizedMesh()
 	// MESHES THAT ARE ADJACENT ARE NOT CONNTECTED CORRECTLY 
 
 	int iIndex = 0;
+	int a = 0;
 	// The data points for terrain are stored at the corners of our "cubes", so the terrainMap needs to be 1 larger
 	// than the width/height of our mesh.
 	for (int x = 0; x < Increment.X + 1; ++x) {
@@ -33,14 +34,13 @@ void ANGGChunk::GenerateRandomizedMesh()
 				// Get a terrain height using good old Perlin noise.
 				float thisHeight = Extent.Z *
 					((FMath::PerlinNoise3D(FVector(
-					((float)x * (float)CubeResolution.X + GetActorLocation().X + 0.001f) / CubeResolution.X / FeatureSize,
-						((float)y  * (float)CubeResolution.Y + GetActorLocation().Y + 0.001f) / CubeResolution.Y / FeatureSize,
+					(((float)x * (float)CubeResolution.X + GetActorLocation().X + 0.001f) / CubeResolution.X) / FeatureSize,
+					(((float)y  * (float)CubeResolution.Y + GetActorLocation().Y + 0.001f) / CubeResolution.Y) / FeatureSize,
 						GetActorLocation().Z)
 					) + 1.0f) / 2.0f);
 
-				iIndex = z + y * Increment.Z + x * Increment.Z * Increment.Y;
+				iIndex = z + y * (Increment.Z + 1) + x * (Increment.Z + 1) * (Increment.Y + 1);
 				VoxelData[iIndex] = z * CubeResolution.Z - thisHeight;
-
 			}
 		}
 	}
@@ -83,6 +83,7 @@ void ANGGChunk::OnConstruction(const FTransform & Transform)
 void ANGGChunk::GenerateGeometry()
 {
 
+	int a = 0;
 	//there's some weird off by one error going on...
 	for (int x = 0; x < Increment.X; ++x)
 	{
@@ -90,12 +91,14 @@ void ANGGChunk::GenerateGeometry()
 		{
 			for (int z = 0; z < Increment.Z; ++z)
 			{
+				a++;
 				// March the cube for each position
 				MarchCube(FVector(x, y, z));
 			}
 		}
 	}
 
+	GEngine->AddOnScreenDebugMessage(-10, 1.f, FColor::Yellow, FString::Printf(TEXT("iterationen: %i"), a));
 }
 
 void ANGGChunk::MarchCube(FVector Position)
@@ -108,8 +111,8 @@ void ANGGChunk::MarchCube(FVector Position)
 	int iIdxOffset;
 	for (int i = 0; i < 8; i++)
 	{
-		iIdx = Position.Z + Position.Y * Increment.Z + Position.X * Increment.Z * Increment.Y;
-		iIdxOffset = CornerTable[i].Z + CornerTable[i].Y * Increment.Z + CornerTable[i].X * Increment.Y * Increment.Z;
+		iIdx = Position.Z + Position.Y * (Increment.Z + 1) + Position.X * (Increment.Z + 1) * (Increment.Y + 1);
+		iIdxOffset = CornerTable[i].Z + CornerTable[i].Y * (Increment.Z + 1) + CornerTable[i].X * (Increment.Y + 1) * (Increment.Z + 1);
 		CubeValues[i] = VoxelData[iIdx + iIdxOffset];
 	}
 

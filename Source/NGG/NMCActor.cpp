@@ -169,6 +169,7 @@ void ANMCActor::ItlCreateFullMeshData()
 
 	ItlClearAllMeshData();
 
+	int a = 0;
 	// Loop through each "cube" in our terrain.
 	for (int x = 0; x < SectionSize.X; x += CubeResolution.X)
 	{
@@ -178,11 +179,12 @@ void ANMCActor::ItlCreateFullMeshData()
 			{
 				// March the cube for each position
 				MarchCube(FVector(x, y, z));
-
+				a++;
 			}
 		}
 	}
 
+	GEngine->AddOnScreenDebugMessage(-10, 1.f, FColor::Yellow, FString::Printf(TEXT("iterationen: %i"), a));
 	ItlBuildOrUpdateMesh();
 }
 
