@@ -21,9 +21,6 @@ void ANGGChunk::GenerateRandomizedMesh()
 {
 	ItlSetup(false);
 
-	// TODO: THIS IS STILL OFF BY ONE
-	// MESHES THAT ARE ADJACENT ARE NOT CONNTECTED CORRECTLY 
-
 	int iIndex = 0;
 	int a = 0;
 	// The data points for terrain are stored at the corners of our "cubes", so the terrainMap needs to be 1 larger
