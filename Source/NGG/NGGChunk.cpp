@@ -213,6 +213,12 @@ void ANGGChunk::ItlClearMeshData()
 	Tangents.Empty();
 }
 
+int32 ANGGChunk::ItlGetVoxelIndexForVector(const FVector & Location)
+{
+	
+	return int32();
+}
+
 // Called every frame
 void ANGGChunk::Tick(float DeltaTime)
 {

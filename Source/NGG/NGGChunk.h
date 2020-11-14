@@ -60,7 +60,7 @@ public:
 		void UpdateChunk();
 
 	UFUNCTION()
-	void GenerateGeometry();
+		void GenerateGeometry();
 
 	UFUNCTION()
 		void MarchCube(FVector Position);
@@ -74,6 +74,8 @@ protected:
 	void ItlSetup(bool bDestroyIfNecessary);
 
 	void ItlClearMeshData();
+
+	int32 ItlGetVoxelIndexForVector(const FVector& Location);
 
 	UPROPERTY()
 		TArray<FVector> Vertices;
