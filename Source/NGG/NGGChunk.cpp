@@ -49,6 +49,8 @@ void ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTe
 {
 	int BuildModifier = bAddTerrain ? -1 : 1;
 
+	//TODO: Handle LocationInWS outside of extent that should still affect this individual chunk
+
 	TArray<int32> Indices;
 	FVector Location = LocationInWS - GetActorLocation();
 	
