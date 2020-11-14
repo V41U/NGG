@@ -54,6 +54,8 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		bool bVoxelDataSetup = false;
 
+	UFUNCTION(BlueprintCallable, Category = "NGG_Chunk")
+		void EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount);
 	UFUNCTION(CallInEditor, Category = "NGG_Chunk")
 		void GenerateRandomizedMesh();
 	UFUNCTION(Category = "NGG_Chunk")
@@ -75,7 +77,9 @@ protected:
 
 	void ItlClearMeshData();
 
+	//returns -1 if not contained
 	int32 ItlGetVoxelIndexForVector(const FVector& Location);
+	bool ItlGetVectorForVoxelIndex(const int32 VectorIndex, FVector& OutVec);
 
 	UPROPERTY()
 		TArray<FVector> Vertices;

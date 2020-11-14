@@ -2,6 +2,8 @@
 
 #pragma once
 
+#include "NGGChunk.h"
+
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "NGGGeometry.generated.h"
@@ -32,7 +34,7 @@ public:
 	
 	// If true then new chunks are generated when the player 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_General")
-		TArray<NGGChunk*> Chunks;
+		TArray<ANGGChunk*> Chunks;
 
 
 

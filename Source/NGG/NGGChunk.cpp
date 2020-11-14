@@ -45,6 +45,52 @@ void ANGGChunk::GenerateRandomizedMesh()
 	UpdateChunk();
 }
 
+void ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount)
+{
+	int BuildModifier = bAddTerrain ? -1 : 1;
+
+	TArray<int32> Indices;
+	FVector Location = LocationInWS - GetActorLocation();
+	
+	GEngine->AddOnScreenDebugMessage(1000, 10, FColor::Yellow, FString::Printf(TEXT("WS Location is %s"), *LocationInWS.ToString()));
+	GEngine->AddOnScreenDebugMessage(1001, 10, FColor::Yellow, FString::Printf(TEXT("Transformed Location is %s"), *Location.ToString()));
+	GEngine->AddOnScreenDebugMessage(1002, 10, FColor::Yellow, FString::Printf(TEXT("Actor's Location is %s"), *GetActorLocation().ToString()));
+
+	int32 LocationWSIndex = ItlGetVoxelIndexForVector(LocationInWS);
+	int32 Index;
+
+	int32 XOffset = FMath::CeilToInt(BrushSize / CubeResolution.X) * (Increment.Z + 1) * (Increment.Y + 1);
+	int32 YOffset = FMath::CeilToInt(BrushSize / CubeResolution.Y) * (Increment.Z + 1);
+	int32 ZOffset = FMath::CeilToInt(BrushSize / CubeResolution.Z);
+
+	for (int32 x = - XOffset; x <= + XOffset; x+= (Increment.Z + 1) * (Increment.Y + 1))
+	{
+		for (int32 y = - YOffset; y <= + YOffset; y+= (Increment.Z + 1))
+		{
+			for (int32 z = - ZOffset; z <= + ZOffset; z++)
+			{
+				FVector OffsetPoint;
+				if (ItlGetVectorForVoxelIndex(LocationWSIndex + x + y + z, OffsetPoint))
+				{
+					float Distance = FVector::Distance(OffsetPoint, Location);
+					Index = ItlGetVoxelIndexForVector(OffsetPoint);
+					if (Distance < BrushSize && Index >= 0 && !Indices.Contains(Index))
+					{
+						float ModificationAmount = SurfaceAmount /*/ Distance*/ * BuildModifier;
+						VoxelData[Index] += ModificationAmount;
+						Indices.AddUnique(Index);
+					}
+				}
+				
+			}
+		}
+	}
+
+	//only update terrain if actually anything changed :) 
+	if(Indices.Num() > 0)
+		UpdateChunk();
+}
+
 void ANGGChunk::UpdateChunk()
 {
 	if (IsValid(ProceduralMeshComponent))
@@ -69,19 +115,20 @@ void ANGGChunk::BeginPlay()
 {
 	Super::BeginPlay();
 	
+
 	ItlSetup(true);
+	GenerateRandomizedMesh();
 }
 
 void ANGGChunk::OnConstruction(const FTransform & Transform)
 {
-
+	bVoxelDataSetup = false;
 }
 
 void ANGGChunk::GenerateGeometry()
 {
 
 	int a = 0;
-	//there's some weird off by one error going on...
 	for (int x = 0; x < Increment.X; ++x)
 	{
 		for (int y = 0; y < Increment.Y; ++y)
@@ -182,25 +229,27 @@ void ANGGChunk::MarchCube(FVector Position)
 
 void ANGGChunk::ItlSetup(bool bDestroyIfNecessary)
 {
-	bool bSetup = (Extent.X % CubeResolution.X) == 0;
-	bSetup = bSetup && (Extent.Y % CubeResolution.Y) == 0;
-	bSetup = bSetup && (Extent.Z % CubeResolution.Z) == 0;
+	if (!bVoxelDataSetup)
+	{
+		bool bSetup = (Extent.X % CubeResolution.X) == 0;
+		bSetup = bSetup && (Extent.Y % CubeResolution.Y) == 0;
+		bSetup = bSetup && (Extent.Z % CubeResolution.Z) == 0;
 
-	if (bSetup)
-	{
-		Increment = FIntVector(FVector(Extent) / FVector(CubeResolution));
-		VoxelDataLength = (Extent.X / CubeResolution.X + 1) * (Extent.Y / CubeResolution.Y + 1) * (Extent.Z / CubeResolution.Z + 1);
-		VoxelData.Empty();
-		VoxelData.SetNum(VoxelDataLength);
-		bVoxelDataSetup = true;
+		if (bSetup)
+		{
+			Increment = FIntVector(FVector(Extent) / FVector(CubeResolution));
+			VoxelDataLength = (Extent.X / CubeResolution.X + 1) * (Extent.Y / CubeResolution.Y + 1) * (Extent.Z / CubeResolution.Z + 1);
+			VoxelData.Empty();
+			VoxelData.SetNum(VoxelDataLength);
+			bVoxelDataSetup = true;
+		}
+		else
+		{
+			GEngine->AddOnScreenDebugMessage(42069, 10.0f, FColor::Red, TEXT("NGG_Chunk Error: Cube resolution does not fit exactly into given Extent. Ensure that for each axis the % equals 0!"));
+			if (bDestroyIfNecessary)
+				Destroy();
+		}
 	}
-	else
-	{
-		GEngine->AddOnScreenDebugMessage(42069, 10.0f, FColor::Red, TEXT("NGG_Chunk Error: Cube resolution does not fit exactly into given Extent. Ensure that for each axis the % equals 0!"));
-		if(bDestroyIfNecessary)
-			Destroy();
-	}
-	
 }
 
 void ANGGChunk::ItlClearMeshData()
@@ -215,8 +264,51 @@ void ANGGChunk::ItlClearMeshData()
 
 int32 ANGGChunk::ItlGetVoxelIndexForVector(const FVector & Location)
 {
+	int32 Index = -1;
+	FVector UpdatedLocation = Location;
+	if(UpdatedLocation.X > Extent.X || UpdatedLocation.Y > Extent.Y || UpdatedLocation.Z > Extent.Z)
+		UpdatedLocation = Location - GetActorLocation();
+	// The TerrainMap contains only local space coordinates between 0 and SectionSize.AXIS
+	bool bContained = UpdatedLocation.X >= 0.f && UpdatedLocation.X <= Extent.X &&
+		UpdatedLocation.Y >= 0.f && UpdatedLocation.Y <= Extent.Y &&
+		UpdatedLocation.Z >= 0.f && UpdatedLocation.Z <= Extent.Z;
+
+	if (bContained)
+	{
+		//Only now can we determine the closest cube in the terrain map
+		float AdjustedX;
+		float AdjustedY;
+		float AdjustedZ;
+
+		AdjustedX = FMath::RoundToInt(UpdatedLocation.X / CubeResolution.X);
+		AdjustedY = FMath::RoundToInt(UpdatedLocation.Y / CubeResolution.Y);
+		AdjustedZ = FMath::RoundToInt(UpdatedLocation.Z / CubeResolution.Z);
+
+		Index = AdjustedZ + AdjustedY * (Increment.Z + 1) + AdjustedX * (Increment.Z + 1) * (Increment.Y + 1);
+	}
+
+	return Index;
+}
+
+bool ANGGChunk::ItlGetVectorForVoxelIndex(const int32 VectorIndex, FVector& OutVec)
+{
+	OutVec = FVector(-1, -1, -1);
+	bool bContained = VectorIndex >= 0 && VectorIndex < VoxelData.Num();
 	
-	return int32();
+	if (bContained)
+	{
+		int X= 0.0f;
+		int Y= 0.0f;
+		int Z= 0.0f;
+
+		X = FMath::FloorToInt(VectorIndex / ((Increment.Z + 1) * (Increment.Y + 1)));
+		Y = FMath::FloorToInt((VectorIndex - X * (Increment.Z + 1) * (Increment.Y + 1)) / (Increment.Z + 1));
+		Z = VectorIndex - X * (Increment.Z + 1) * (Increment.Y + 1) - Y * (Increment.Z + 1);
+
+		OutVec = FVector(X, Y, Z) * FVector(CubeResolution);
+	}
+
+	return bContained;
 }
 
 // Called every frame
