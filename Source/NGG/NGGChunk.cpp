@@ -50,21 +50,33 @@ void ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTe
 	int BuildModifier = bAddTerrain ? -1 : 1;
 
 	//TODO: Handle LocationInWS outside of extent that should still affect this individual chunk
+	// There is already some functionality existing, however there's still some weird iffy behavior
 
 	TArray<int32> Indices;
+	//This is not correct if the location and axis are conflicting 
+	//(e.g. both negative and LocationInWS.X < GetActorLocation().X yet both negative would be wrong translation)
+	FVector ActorLocation = GetActorLocation();
+	ActorLocation.X *= (ActorLocation.X < 0) ? -1 : 1;
+	ActorLocation.Y *= (ActorLocation.Y < 0) ? -1 : 1;
+	ActorLocation.Z *= (ActorLocation.Z < 0) ? -1 : 1;
 	FVector Location = LocationInWS - GetActorLocation();
+
+	GEngine->AddOnScreenDebugMessage(998, 10, FColor::Blue, FString::Printf(TEXT("ActorLocation is %s"), *GetActorLocation().ToString()));
+	GEngine->AddOnScreenDebugMessage(999, 10, FColor::Blue, FString::Printf(TEXT("AdjustedLocation is %s"), *ActorLocation.ToString()));
+	GEngine->AddOnScreenDebugMessage(997, 10, FColor::Blue, FString::Printf(TEXT("Transformed Location is %s"), *Location.ToString()));
+
 	
 	GEngine->AddOnScreenDebugMessage(1000, 10, FColor::Yellow, FString::Printf(TEXT("WS Location is %s"), *LocationInWS.ToString()));
 	GEngine->AddOnScreenDebugMessage(1001, 10, FColor::Yellow, FString::Printf(TEXT("Transformed Location is %s"), *Location.ToString()));
 	GEngine->AddOnScreenDebugMessage(1002, 10, FColor::Yellow, FString::Printf(TEXT("Actor's Location is %s"), *GetActorLocation().ToString()));
 
-	int32 LocationWSIndex = ItlGetVoxelIndexForVector(LocationInWS);
+	int32 LocationWSIndex = ItlGetVoxelIndexForVector(Location);
 	int32 Index;
 
-	int32 XOffset = FMath::CeilToInt(BrushSize / CubeResolution.X) * (Increment.Z + 1) * (Increment.Y + 1);
-	int32 YOffset = FMath::CeilToInt(BrushSize / CubeResolution.Y) * (Increment.Z + 1);
-	int32 ZOffset = FMath::CeilToInt(BrushSize / CubeResolution.Z);
-
+	int32 XOffset = FMath::RoundToInt(BrushSize / CubeResolution.X) * (Increment.Z + 1) * (Increment.Y + 1);
+	int32 YOffset = FMath::RoundToInt(BrushSize / CubeResolution.Y) * (Increment.Z + 1);
+	int32 ZOffset = FMath::RoundToInt(BrushSize / CubeResolution.Z);
+	
 	for (int32 x = - XOffset; x <= + XOffset; x+= (Increment.Z + 1) * (Increment.Y + 1))
 	{
 		for (int32 y = - YOffset; y <= + YOffset; y+= (Increment.Z + 1))
@@ -76,7 +88,7 @@ void ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTe
 				{
 					float Distance = FVector::Distance(OffsetPoint, Location);
 					Index = ItlGetVoxelIndexForVector(OffsetPoint);
-					if (Distance < BrushSize && Index >= 0 && !Indices.Contains(Index))
+					if (Distance < BrushSize && Index >= 0 && Index < VoxelData.Num() && !Indices.Contains(Index))
 					{
 						float ModificationAmount = SurfaceAmount /*/ Distance*/ * BuildModifier;
 						VoxelData[Index] += ModificationAmount;
@@ -266,28 +278,18 @@ void ANGGChunk::ItlClearMeshData()
 
 int32 ANGGChunk::ItlGetVoxelIndexForVector(const FVector & Location)
 {
-	int32 Index = -1;
-	FVector UpdatedLocation = Location;
-	if(UpdatedLocation.X > Extent.X || UpdatedLocation.Y > Extent.Y || UpdatedLocation.Z > Extent.Z)
-		UpdatedLocation = Location - GetActorLocation();
-	// The TerrainMap contains only local space coordinates between 0 and SectionSize.AXIS
-	bool bContained = UpdatedLocation.X >= 0.f && UpdatedLocation.X <= Extent.X &&
-		UpdatedLocation.Y >= 0.f && UpdatedLocation.Y <= Extent.Y &&
-		UpdatedLocation.Z >= 0.f && UpdatedLocation.Z <= Extent.Z;
+	int32 Index = 0;
+	
+	float AdjustedX;
+	float AdjustedY;
+	float AdjustedZ;
 
-	if (bContained)
-	{
-		//Only now can we determine the closest cube in the terrain map
-		float AdjustedX;
-		float AdjustedY;
-		float AdjustedZ;
+	AdjustedX = FMath::RoundToInt(Location.X / CubeResolution.X);
+	AdjustedY = FMath::RoundToInt(Location.Y / CubeResolution.Y);
+	AdjustedZ = FMath::RoundToInt(Location.Z / CubeResolution.Z);
 
-		AdjustedX = FMath::RoundToInt(UpdatedLocation.X / CubeResolution.X);
-		AdjustedY = FMath::RoundToInt(UpdatedLocation.Y / CubeResolution.Y);
-		AdjustedZ = FMath::RoundToInt(UpdatedLocation.Z / CubeResolution.Z);
-
-		Index = AdjustedZ + AdjustedY * (Increment.Z + 1) + AdjustedX * (Increment.Z + 1) * (Increment.Y + 1);
-	}
+	Index = AdjustedZ + AdjustedY * (Increment.Z + 1) + AdjustedX * (Increment.Z + 1) * (Increment.Y + 1);
+	
 
 	return Index;
 }
