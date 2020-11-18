@@ -68,30 +68,26 @@ void ANGGGeometry::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAd
 	FVector YVector(0, 1, 0);
 	FVector ZVector(0, 0, 1);
 
-	//TODO: TEST THIS LOGIC!
-	// To clear up: How to create hierarchy where the spawned actors are not separated from the geometry actor!
-
-	for (auto & ChunkTuple : Chunks)
+		for (auto & ChunkTuple : Chunks)
 	{
 		ANGGChunk* SingleChunk = Cast<ANGGChunk>(ChunkTuple.Value->GetChildActor());
 
 		if (IsValid(SingleChunk))
 		{
 			FVector ChunkLocation = SingleChunk->GetActorLocation();
-			FVector Location = LocationInWS;
 
 			//X-Axis
-			bool bXAddThisTuple = Location.X > ChunkLocation.X && Location.X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
-			bXAddThisTuple = bXAddThisTuple || (Location + XVector * BrushSize).X > ChunkLocation.X && (Location + XVector * BrushSize).X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
-			bXAddThisTuple = bXAddThisTuple || (Location - XVector * BrushSize).X > ChunkLocation.X && (Location - XVector * BrushSize).X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
+			bool bXAddThisTuple = LocationInWS.X > ChunkLocation.X && LocationInWS.X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
+			bXAddThisTuple = bXAddThisTuple || (LocationInWS + XVector * BrushSize).X > ChunkLocation.X && (LocationInWS + XVector * BrushSize).X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
+			bXAddThisTuple = bXAddThisTuple || (LocationInWS - XVector * BrushSize).X > ChunkLocation.X && (LocationInWS - XVector * BrushSize).X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
 			//Y-Axis
-			bool bYAddThisTuple = Location.Y > ChunkLocation.Y && Location.Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
-			bYAddThisTuple = bYAddThisTuple || (Location + YVector * BrushSize).Y > ChunkLocation.Y && (Location + YVector * BrushSize).Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
-			bYAddThisTuple = bYAddThisTuple || (Location - YVector * BrushSize).Y > ChunkLocation.Y && (Location - YVector * BrushSize).Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
+			bool bYAddThisTuple = LocationInWS.Y > ChunkLocation.Y && LocationInWS.Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
+			bYAddThisTuple = bYAddThisTuple || (LocationInWS + YVector * BrushSize).Y > ChunkLocation.Y && (LocationInWS + YVector * BrushSize).Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
+			bYAddThisTuple = bYAddThisTuple || (LocationInWS - YVector * BrushSize).Y > ChunkLocation.Y && (LocationInWS - YVector * BrushSize).Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
 			//Z-Axis
-			bool bZAddThisTuple = Location.Z > ChunkLocation.Z && Location.Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
-			bZAddThisTuple = bZAddThisTuple || (Location + ZVector * BrushSize).Z > ChunkLocation.Z && (Location + ZVector * BrushSize).Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
-			bZAddThisTuple = bZAddThisTuple || (Location - ZVector * BrushSize).Z > ChunkLocation.Z && (Location - ZVector * BrushSize).Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
+			bool bZAddThisTuple = LocationInWS.Z > ChunkLocation.Z && LocationInWS.Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
+			bZAddThisTuple = bZAddThisTuple || (LocationInWS + ZVector * BrushSize).Z > ChunkLocation.Z && (LocationInWS + ZVector * BrushSize).Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
+			bZAddThisTuple = bZAddThisTuple || (LocationInWS - ZVector * BrushSize).Z > ChunkLocation.Z && (LocationInWS - ZVector * BrushSize).Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
 
 			if (bXAddThisTuple && bYAddThisTuple && bZAddThisTuple)
 				ChunksToEdit.Add(SingleChunk);
