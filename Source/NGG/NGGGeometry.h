@@ -53,7 +53,7 @@ public:
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_General")
 		TArray<ANGGChunk*> StartChunks;
 	UPROPERTY(BlueprintReadOnly, Category = "NGG_General")
-		TMap<FVector, ANGGChunk*> Chunks;
+		TMap<FVector, UChildActorComponent*> Chunks;
 
 	// How many chunks have been added to the actor before starting to create chunks (= initial size of Chunks)
 	UPROPERTY(BlueprintReadOnly, Category = "NGG_General")
@@ -91,7 +91,7 @@ protected:
 	
 
 	UFUNCTION()
-		ANGGChunk* ItlCreateChunk();
+		UChildActorComponent* ItlCreateChunk();
 
 public:	
 	// Called every frame

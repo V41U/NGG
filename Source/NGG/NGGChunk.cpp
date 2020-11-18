@@ -53,22 +53,7 @@ void ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTe
 	// There is already some functionality existing, however there's still some weird iffy behavior
 
 	TArray<int32> Indices;
-	//This is not correct if the location and axis are conflicting 
-	//(e.g. both negative and LocationInWS.X < GetActorLocation().X yet both negative would be wrong translation)
-	FVector ActorLocation = GetActorLocation();
-	ActorLocation.X *= (ActorLocation.X < 0) ? -1 : 1;
-	ActorLocation.Y *= (ActorLocation.Y < 0) ? -1 : 1;
-	ActorLocation.Z *= (ActorLocation.Z < 0) ? -1 : 1;
 	FVector Location = LocationInWS - GetActorLocation();
-
-	GEngine->AddOnScreenDebugMessage(998, 10, FColor::Blue, FString::Printf(TEXT("ActorLocation is %s"), *GetActorLocation().ToString()));
-	GEngine->AddOnScreenDebugMessage(999, 10, FColor::Blue, FString::Printf(TEXT("AdjustedLocation is %s"), *ActorLocation.ToString()));
-	GEngine->AddOnScreenDebugMessage(997, 10, FColor::Blue, FString::Printf(TEXT("Transformed Location is %s"), *Location.ToString()));
-
-	
-	GEngine->AddOnScreenDebugMessage(1000, 10, FColor::Yellow, FString::Printf(TEXT("WS Location is %s"), *LocationInWS.ToString()));
-	GEngine->AddOnScreenDebugMessage(1001, 10, FColor::Yellow, FString::Printf(TEXT("Transformed Location is %s"), *Location.ToString()));
-	GEngine->AddOnScreenDebugMessage(1002, 10, FColor::Yellow, FString::Printf(TEXT("Actor's Location is %s"), *GetActorLocation().ToString()));
 
 	int32 LocationWSIndex = ItlGetVoxelIndexForVector(Location);
 	int32 Index;

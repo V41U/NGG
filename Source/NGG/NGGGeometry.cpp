@@ -4,6 +4,7 @@
 #include "NGGGeometry.h"
 
 
+#include "Components/ChildActorComponent.h"
 #include "Kismet/GameplayStatics.h"
 
 // Sets default values
@@ -15,9 +16,11 @@ ANGGGeometry::ANGGGeometry()
 
 void ANGGGeometry::SpawnChunk(FIntVector AdditionDirection)
 {
-	ANGGChunk * CreatedChunk = nullptr;
+	UChildActorComponent * CreatedChunk = nullptr;
 
 	bool bLegalAction = true;
+
+	//TODO: what is a bLegalAction?
 	
 
 	if (bLegalAction)
@@ -29,12 +32,26 @@ void ANGGGeometry::SpawnChunk(FIntVector AdditionDirection)
 	{
 		FVector ChunkLocation(0, 0, 0);
 		while (Chunks.Contains(ChunkLocation))
-			ChunkLocation += FVector(AdditionDirection);
-		CreatedChunk->SetActorLocation(GetActorLocation() + ChunkLocation * FVector(ChunkSize));
-		CreatedChunk->GenerateRandomizedMesh();
-		FAttachmentTransformRules AttachmentRules(EAttachmentRule::KeepRelative, true);
+		{
+			if (IsValid(Chunks[ChunkLocation]))
+			{
+				ANGGChunk* SingleChunk = Cast<ANGGChunk>(Chunks[ChunkLocation]->GetChildActor());
+				if (IsValid(SingleChunk))
+					ChunkLocation += FVector(AdditionDirection) * FVector(SingleChunk->Extent);
+			}
+			else
+			{
+				Chunks.Remove(ChunkLocation);
+				break;
+			}
+		}
 
-		CreatedChunk->AttachToActor(this, AttachmentRules);
+		CreatedChunk->AddRelativeLocation(ChunkLocation);
+		CreatedChunk->AttachTo(RootComponent);
+		ANGGChunk* ActualCastedChunk = Cast<ANGGChunk>(CreatedChunk->GetChildActor());
+		if (ActualCastedChunk)
+			ActualCastedChunk->GenerateRandomizedMesh();
+
 		Chunks.Add(ChunkLocation, CreatedChunk);
 	}
 	else
@@ -56,21 +73,30 @@ void ANGGGeometry::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAd
 
 	for (auto & ChunkTuple : Chunks)
 	{
-		//X-Axis
-		bool bAddThisTuple = LocationInWS.X > ChunkTuple.Key.X && LocationInWS.X < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).X;
-		bAddThisTuple = bAddThisTuple || (LocationInWS + XVector * BrushSize).X > ChunkTuple.Key.X && (LocationInWS + XVector * BrushSize).X < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).X;
-		bAddThisTuple = bAddThisTuple || (LocationInWS - XVector * BrushSize).X > ChunkTuple.Key.X && (LocationInWS - XVector * BrushSize).X < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).X;
-		//Y-Axis
-		bAddThisTuple = bAddThisTuple || LocationInWS.Y > ChunkTuple.Key.Y && LocationInWS.Y < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).Y;
-		bAddThisTuple = bAddThisTuple || (LocationInWS + YVector * BrushSize).Y > ChunkTuple.Key.Y && (LocationInWS + YVector * BrushSize).Y < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).Y;
-		bAddThisTuple = bAddThisTuple || (LocationInWS - YVector * BrushSize).Y > ChunkTuple.Key.Y && (LocationInWS - YVector * BrushSize).Y < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).Y;
-		//Z-Axis
-		bAddThisTuple = bAddThisTuple || LocationInWS.Z > ChunkTuple.Key.Z && LocationInWS.Z < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).Z;
-		bAddThisTuple = bAddThisTuple || (LocationInWS + ZVector * BrushSize).Z > ChunkTuple.Key.Z && (LocationInWS + ZVector * BrushSize).Z < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).Z;
-		bAddThisTuple = bAddThisTuple || (LocationInWS - ZVector * BrushSize).Z > ChunkTuple.Key.Z && (LocationInWS - ZVector * BrushSize).Z < (ChunkTuple.Key + FVector(ChunkTuple.Value->Extent)).Z;
+		ANGGChunk* SingleChunk = Cast<ANGGChunk>(ChunkTuple.Value->GetChildActor());
 
-		if (bAddThisTuple)
-			ChunksToEdit.Add(ChunkTuple.Value);
+		if (IsValid(SingleChunk))
+		{
+			FVector ChunkLocation = SingleChunk->GetActorLocation();
+			FVector Location = LocationInWS;
+
+			//X-Axis
+			bool bXAddThisTuple = Location.X > ChunkLocation.X && Location.X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
+			bXAddThisTuple = bXAddThisTuple || (Location + XVector * BrushSize).X > ChunkLocation.X && (Location + XVector * BrushSize).X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
+			bXAddThisTuple = bXAddThisTuple || (Location - XVector * BrushSize).X > ChunkLocation.X && (Location - XVector * BrushSize).X < (ChunkLocation + FVector(SingleChunk->Extent)).X;
+			//Y-Axis
+			bool bYAddThisTuple = Location.Y > ChunkLocation.Y && Location.Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
+			bYAddThisTuple = bYAddThisTuple || (Location + YVector * BrushSize).Y > ChunkLocation.Y && (Location + YVector * BrushSize).Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
+			bYAddThisTuple = bYAddThisTuple || (Location - YVector * BrushSize).Y > ChunkLocation.Y && (Location - YVector * BrushSize).Y < (ChunkLocation + FVector(SingleChunk->Extent)).Y;
+			//Z-Axis
+			bool bZAddThisTuple = Location.Z > ChunkLocation.Z && Location.Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
+			bZAddThisTuple = bZAddThisTuple || (Location + ZVector * BrushSize).Z > ChunkLocation.Z && (Location + ZVector * BrushSize).Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
+			bZAddThisTuple = bZAddThisTuple || (Location - ZVector * BrushSize).Z > ChunkLocation.Z && (Location - ZVector * BrushSize).Z < (ChunkLocation + FVector(SingleChunk->Extent)).Z;
+
+			if (bXAddThisTuple && bYAddThisTuple && bZAddThisTuple)
+				ChunksToEdit.Add(SingleChunk);
+		}
+		
 	}
 
 	for (auto& SingleChunk : ChunksToEdit)
@@ -111,40 +137,49 @@ void ANGGGeometry::BeginPlay()
 {
 	Super::BeginPlay();
 
-	for (auto& SingleStartChunk : StartChunks)
-	{
-		if(SingleStartChunk)
-			Chunks.Add(SingleStartChunk->GetActorLocation(), SingleStartChunk);
-	}
+
+	//TODO: DO THIS
+	//for (auto& SingleStartChunk : StartChunks)
+	//{
+	//	if(SingleStartChunk)
+	//		Chunks.Add(SingleStartChunk->GetActorLocation(), SingleStartChunk);
+	//}
 }
 
 void ANGGGeometry::RemoveExistingChunks()
 {
 	for (auto & SingleChunk : Chunks)
 	{
-		if(SingleChunk.Value)
-			SingleChunk.Value->Destroy();
-		SingleChunk.Value = nullptr;
+		if(IsValid(SingleChunk.Value))
+			SingleChunk.Value->DestroyComponent();
 	}
 	Chunks.Empty();
 }
 
-ANGGChunk * ANGGGeometry::ItlCreateChunk()
+UChildActorComponent * ANGGGeometry::ItlCreateChunk()
 {
-	FTransform SpawnTransform;
-	ANGGChunk* CreatedChunk = Cast<ANGGChunk>(UGameplayStatics::BeginDeferredActorSpawnFromClass(this, ANGGChunk::StaticClass(), SpawnTransform));
-
-	if (CreatedChunk != nullptr)
+	UChildActorComponent* FreshObject = nullptr;
+	TSubclassOf<UChildActorComponent> ClassToCreate = UChildActorComponent::StaticClass();
+	if (ClassToCreate->IsValidLowLevelFast())
 	{
-		CreatedChunk->CubeResolution = ChunkCubeResolution;
-		CreatedChunk->Extent = ChunkSize;
-		CreatedChunk->bUseSmoothSurface = bUseSmoothGeometryGeneration;
-		CreatedChunk->FeatureSize = ChunkFeatureSize;
+		FString Chunk("Chunk");
+		Chunk.Append(FString::FromInt(Chunks.Num()));
+		FName ChunkFName(Chunk);
 
-		UGameplayStatics::FinishSpawningActor(CreatedChunk, SpawnTransform);
+		FreshObject = NewObject<UChildActorComponent>(this, ChunkFName, RF_NoFlags, ClassToCreate->GetDefaultObject());
+		FreshObject->SetChildActorClass(ANGGChunk::StaticClass());
+		FreshObject->CreateChildActor();
+		ANGGChunk* CreatedChunk = Cast<ANGGChunk>(FreshObject->GetChildActor());
+		if (CreatedChunk)
+		{
+			CreatedChunk->CubeResolution = ChunkCubeResolution;
+			CreatedChunk->Extent = ChunkSize;
+			CreatedChunk->bUseSmoothSurface = bUseSmoothGeometryGeneration;
+			CreatedChunk->FeatureSize = ChunkFeatureSize;
+		}
 	}
 
-	return CreatedChunk;
+	return FreshObject;
 }
 
 // Called every frame
