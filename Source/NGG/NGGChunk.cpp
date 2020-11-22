@@ -208,7 +208,7 @@ void ANGGChunk::MarchCube(FVector Position)
 	// If it is, use bit-magic to the set the corresponding bit to 1. So if only the 3rd point in the cube was below
 	// the surface, the bit would look like 00100000, which represents the integer value 32.
 	for (int i = 0; i < 8; i++)
-		if (CubeValues[i] > TerrainSurface)
+		if (CubeValues[i] > 0.5f)
 			TableIndex |= 1 << i;
 
 	if (TableIndex == 0 || TableIndex == 255)
@@ -242,9 +242,9 @@ void ANGGChunk::MarchCube(FVector Position)
 
 				// If the difference is 0, then the terrain passes through the middle.
 				if (difference == 0)
-					difference = TerrainSurface;
+					difference = 0.5f;
 				else
-					difference = (TerrainSurface - vert1Sample) / difference;
+					difference = (0.5f - vert1Sample) / difference;
 
 				// Calculate the point along the edge that passes through.
 				VertexPosition = Vertex1 + ((Vertex2 - Vertex1) * difference);

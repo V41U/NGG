@@ -38,10 +38,6 @@ public:
 	// for the current perlin noise the 'frequency' of the features (smaller value => rougher terrain)
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_Chunk")
 		float FeatureSize = 100.0f;
-	// Controls where the edges are 'snapped' to within a cube (value between 0-1)
-	// Only used if bUseSmoothSurface is false
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_Chunk")
-		float TerrainSurface = 0.5;
 	// Whether the terrain is smooth or snapped to TerrainSurface
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_Chunk")
 		bool bUseSmoothSurface = true;
