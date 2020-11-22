@@ -32,16 +32,18 @@ public:
 		meta = (ClampMin = "1.0"))
 		FIntVector CubeResolution = FIntVector(100,100,100);
 	// The internal procedural mesh component
-	UPROPERTY()
+	UPROPERTY(BlueprintReadOnly)
 		UProceduralMeshComponent* ProceduralMeshComponent;
 
-	///////////////////////////////
-	// DEBUGGING STUFF THAT SHOULD BE REPLACED SOMEHOW
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_DEBUGGING")
+	// for the current perlin noise the 'frequency' of the features (smaller value => rougher terrain)
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_Chunk")
 		float FeatureSize = 100.0f;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_DEBUGGING")
+	// Controls where the edges are 'snapped' to within a cube (value between 0-1)
+	// Only used if bUseSmoothSurface is false
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_Chunk")
 		float TerrainSurface = 0.5;
-	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_DEBUGGING")
+	// Whether the terrain is smooth or snapped to TerrainSurface
+	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_Chunk")
 		bool bUseSmoothSurface = true;
 
 
@@ -54,8 +56,17 @@ public:
 	UPROPERTY(BlueprintReadOnly)
 		bool bVoxelDataSetup = false;
 
+	// Call this function if you want to edit terrain using the NGGChunkManager
+	// This results in the following effects:
+	//	The chunk manager determines which chunks are affected by the input
+	//	It notifies all the individual chunks seperately and updates their surface
+	//	returns the number of affected chunks (returns -1 if something went wrong horribly!)
 	UFUNCTION(BlueprintCallable, Category = "NGG_Chunk")
-		void EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount);
+		int32 EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount);
+	// Call this function if you want to manually overwrite this single chunk without affecting other chunks using the NGGChunkManager
+	// This may not be advised, but do what you want ;) 
+	UFUNCTION(BlueprintCallable, Category = "NGG_Chunk")
+		void EditTerrainOVERRIDE(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount);
 	UFUNCTION(CallInEditor, Category = "NGG_Chunk")
 		void GenerateRandomizedMesh();
 	UFUNCTION(Category = "NGG_Chunk")
@@ -93,6 +104,8 @@ protected:
 		TArray<FColor> VertexColors;
 	UPROPERTY()
 		TArray<FProcMeshTangent> Tangents;
+	UPROPERTY()
+		class ANGGChunkManager* ChunkManager;
 
 
 public:	

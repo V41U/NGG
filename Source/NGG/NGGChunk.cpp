@@ -3,8 +3,22 @@
 
 #include "NGGChunk.h"
 
-//DEBUG STUFF TODO: DELETE ME LATER!!
+// managing entity
+#include "NGGChunkManager.h"
+// unreal stuff
 #include "DrawDebugHelpers.h"
+#include "Kismet/GameplayStatics.h"
+
+
+//TODOs:
+// Allow Material to be set!
+// Notify ChunkManager of destruction (or somehow manage to allow chunks to be deleted without a warning in the editor!)
+// Expose the VoxelData and have a setter which allows for regenerating the map
+//  - this would allow the users to save and load data into chunks
+// Expose the GenerateRandomizedMesh function better so that the actor can have its generation overwritten
+// Maybe: Create a SaveChunk function?
+
+
 
 // Sets default values
 ANGGChunk::ANGGChunk()
@@ -15,6 +29,7 @@ ANGGChunk::ANGGChunk()
 	ProceduralMeshComponent = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("ProceduralMesh"));
 	RootComponent = ProceduralMeshComponent;
 
+	ChunkManager = nullptr;
 }
 
 void ANGGChunk::GenerateRandomizedMesh()
@@ -45,12 +60,20 @@ void ANGGChunk::GenerateRandomizedMesh()
 	UpdateChunk();
 }
 
-void ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount)
+int32 ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount)
+{
+	if (IsValid(ChunkManager))
+		return ChunkManager->EditChunks(LocationInWS, HitNormal, bAddTerrain, BrushSize, SurfaceAmount);
+	else
+	{
+		GEngine->AddOnScreenDebugMessage(47587548, 10.0f, FColor::Red, TEXT("ChunkManager is not valid! This is an internal error!"));
+		return -1;
+	}
+}
+
+void ANGGChunk::EditTerrainOVERRIDE(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount)
 {
 	int BuildModifier = bAddTerrain ? -1 : 1;
-
-	//TODO: Handle LocationInWS outside of extent that should still affect this individual chunk
-	// There is already some functionality existing, however there's still some weird iffy behavior
 
 	TArray<int32> Indices;
 	FVector Location = LocationInWS - GetActorLocation();
@@ -61,12 +84,12 @@ void ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTe
 	int32 XOffset = FMath::RoundToInt(BrushSize / CubeResolution.X) * (Increment.Z + 1) * (Increment.Y + 1);
 	int32 YOffset = FMath::RoundToInt(BrushSize / CubeResolution.Y) * (Increment.Z + 1);
 	int32 ZOffset = FMath::RoundToInt(BrushSize / CubeResolution.Z);
-	
-	for (int32 x = - XOffset; x <= + XOffset; x+= (Increment.Z + 1) * (Increment.Y + 1))
+
+	for (int32 x = -XOffset; x <= +XOffset; x += (Increment.Z + 1) * (Increment.Y + 1))
 	{
-		for (int32 y = - YOffset; y <= + YOffset; y+= (Increment.Z + 1))
+		for (int32 y = -YOffset; y <= +YOffset; y += (Increment.Z + 1))
 		{
-			for (int32 z = - ZOffset; z <= + ZOffset; z++)
+			for (int32 z = -ZOffset; z <= +ZOffset; z++)
 			{
 				FVector OffsetPoint;
 				if (ItlGetVectorForVoxelIndex(LocationWSIndex + x + y + z, OffsetPoint))
@@ -80,15 +103,16 @@ void ANGGChunk::EditTerrain(FVector LocationInWS, FVector HitNormal, bool bAddTe
 						Indices.AddUnique(Index);
 					}
 				}
-				
+
 			}
 		}
 	}
 
 	//only update terrain if actually anything changed :) 
-	if(Indices.Num() > 0)
+	if (Indices.Num() > 0)
 		UpdateChunk();
 }
+
 
 void ANGGChunk::UpdateChunk()
 {
@@ -121,7 +145,28 @@ void ANGGChunk::BeginPlay()
 
 void ANGGChunk::OnConstruction(const FTransform & Transform)
 {
+	//Register this chunk
+	if (!IsValid(ChunkManager))
+	{
+		TArray<AActor*> ChunkManagers;//this should be exactly one!
+		UGameplayStatics::GetAllActorsOfClass(GetWorld(), ANGGChunkManager::StaticClass(), ChunkManagers);
+
+		if (ChunkManagers.Num() == 0)
+			ChunkManager = GetWorld()->SpawnActor< ANGGChunkManager>(FVector(0, 0, 0), FRotator(0, 0, 0), FActorSpawnParameters());
+		else 
+			ChunkManager = Cast<ANGGChunkManager>(ChunkManagers[0]);
+
+		// Warn user if there are multiple managers
+		if (ChunkManagers.Num() > 1)
+			GEngine->AddOnScreenDebugMessage(47587548, 10.0f, FColor::Red, TEXT("Found more than one NGGChunkManager! This occurs if this manager has been added manually. Ensure that this is not the case!"));
+
+		if (IsValid(ChunkManager) && !ChunkManager->IsRegistered(GetFName()))
+			ChunkManager->RegisterChunk(GetFName(), this);
+	}
+
 	bVoxelDataSetup = false;
+
+
 }
 
 void ANGGChunk::GenerateGeometry()
@@ -141,7 +186,6 @@ void ANGGChunk::GenerateGeometry()
 		}
 	}
 
-	GEngine->AddOnScreenDebugMessage(-10, 1.f, FColor::Yellow, FString::Printf(TEXT("iterationen: %i"), a));
 }
 
 void ANGGChunk::MarchCube(FVector Position)
@@ -207,9 +251,6 @@ void ANGGChunk::MarchCube(FVector Position)
 			}
 			else // Get the midpoint of this edge.
 				VertexPosition = (Vertex1 + Vertex2) / 2.f;
-
-			// TODO: determine correct section
-
 
 			// Add to our vertices and triangles list and incremement the edgeIndex.
 			Vertices.Add(VertexPosition);
