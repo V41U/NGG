@@ -71,7 +71,8 @@ public:
 	// and expects a returned float that indicates the state of this sample
 	UFUNCTION(BlueprintNativeEvent, Category = "NGG_Chunk")
 		float SamplePosition(FVector SamplePosition);
-	UFUNCTION(Category = "NGG_Chunk")
+	// Call to regenreate geometry for this chunk
+	UFUNCTION(BlueprintCallable, Category = "NGG_Chunk")
 		void UpdateChunk();
 
 	UFUNCTION()
@@ -79,6 +80,14 @@ public:
 
 	UFUNCTION()
 		void MarchCube(FVector Position);
+
+	// Returns the internal voxel data of this chunk
+	UFUNCTION(BlueprintCallable)
+		TArray<float> GetVoxelData();
+	// Sets voxel data for this chunk
+	// If you want to regenerate Geometry, call UpdateChunk()
+	UFUNCTION(BlueprintCallable)
+		void SetVoxelData(TArray<float> NewVoxelData);
 
 protected:
 	// Called when the game starts or when spawned

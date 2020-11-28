@@ -11,14 +11,19 @@
 
 
 //TODOs:
-// Allow Material to be set!
 // Notify ChunkManager of destruction (or somehow manage to allow chunks to be deleted without a warning in the editor!)
-// Expose the VoxelData and have a setter which allows for regenerating the map
-//  - this would allow the users to save and load data into chunks
-// Expose the GenerateRandomizedMesh function better so that the actor can have its generation overwritten
+
+// Calculate correct UVs (current are only dependant on X-&Y-Position in comparison to Extent
 // Maybe: Create a SaveChunk function?
 
+// Done but needs testing: 
 
+//	Expose the GenerateRandomizedMesh function better so that the actor can have its generation overwritten
+//		see: SamplePosition function which can be overridden in Blueprints
+//	 I'd like to change the voxel data so that there is no need to have exact values outside of the 0-1 range (which is weird anyways)
+
+//	Expose the VoxelData and have a setter which allows for regenerating the map
+//	 - this would allow the users to save and load data into chunks
 
 // Sets default values
 ANGGChunk::ANGGChunk()
@@ -294,6 +299,18 @@ void ANGGChunk::MarchCube(FVector Position)
 
 		}
 	}
+}
+
+TArray<float> ANGGChunk::GetVoxelData()
+{
+	return VoxelData;
+}
+
+void ANGGChunk::SetVoxelData(TArray<float> NewVoxelData)
+{
+	// Update VoxelDataLength & VoxelData
+	VoxelDataLength = NewVoxelData.Num();
+	VoxelData = NewVoxelData;
 }
 
 
