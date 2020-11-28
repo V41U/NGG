@@ -32,7 +32,7 @@ public:
 		meta = (ClampMin = "1.0"))
 		FIntVector CubeResolution = FIntVector(100,100,100);
 	// The internal procedural mesh component
-	UPROPERTY(BlueprintReadOnly)
+	UPROPERTY(VisibleAnywhere, BlueprintReadOnly)
 		UProceduralMeshComponent* ProceduralMeshComponent;
 
 	// for the current perlin noise the 'frequency' of the features (smaller value => rougher terrain)
@@ -63,8 +63,14 @@ public:
 	// This may not be advised, but do what you want ;) 
 	UFUNCTION(BlueprintCallable, Category = "NGG_Chunk")
 		void EditTerrainOVERRIDE(FVector LocationInWS, FVector HitNormal, bool bAddTerrain, float BrushSize, float SurfaceAmount);
+
+	// This generates the mesh data
 	UFUNCTION(CallInEditor, Category = "NGG_Chunk")
 		void GenerateRandomizedMesh();
+	// Gives a FVector of the indexed location within the chunk
+	// and expects a returned float that indicates the state of this sample
+	UFUNCTION(BlueprintNativeEvent, Category = "NGG_Chunk")
+		float SamplePosition(FVector SamplePosition);
 	UFUNCTION(Category = "NGG_Chunk")
 		void UpdateChunk();
 

@@ -44,15 +44,9 @@ void ANGGChunk::GenerateRandomizedMesh()
 		for (int y = 0; y < Increment.Y + 1; ++y) {
 			for (int z = 0; z < Increment.Z + 1; ++z) {
 				// Get a terrain height using good old Perlin noise.
-				float thisHeight = Extent.Z *
-					((FMath::PerlinNoise3D(FVector(
-					(((float)x * (float)CubeResolution.X + GetActorLocation().X + 0.001f) / CubeResolution.X) / FeatureSize,
-					(((float)y  * (float)CubeResolution.Y + GetActorLocation().Y + 0.001f) / CubeResolution.Y) / FeatureSize,
-						GetActorLocation().Z)
-					) + 1.0f) / 2.0f);
 
 				iIndex = z + y * (Increment.Z + 1) + x * (Increment.Z + 1) * (Increment.Y + 1);
-				VoxelData[iIndex] = z * CubeResolution.Z - thisHeight;
+				VoxelData[iIndex] = SamplePosition(FVector(x, y, z));
 			}
 		}
 	}
@@ -113,6 +107,18 @@ void ANGGChunk::EditTerrainOVERRIDE(FVector LocationInWS, FVector HitNormal, boo
 		UpdateChunk();
 }
 
+
+float ANGGChunk::SamplePosition_Implementation(FVector SamplePosition)
+{
+	float thisHeight = Extent.Z *
+		((FMath::PerlinNoise3D(FVector(
+		(((float)SamplePosition.X * (float)CubeResolution.X + GetActorLocation().X + 0.001f) / CubeResolution.X) / FeatureSize,
+			(((float)SamplePosition.Y  * (float)CubeResolution.Y + GetActorLocation().Y + 0.001f) / CubeResolution.Y) / FeatureSize,
+			(((float)SamplePosition.Z * (float)CubeResolution.Z + GetActorLocation().Z + 0.001f) / CubeResolution.Z) / FeatureSize)
+		) + 1.0f) / 2.0f);
+
+	return SamplePosition.Z * CubeResolution.Z - thisHeight;
+}
 
 void ANGGChunk::UpdateChunk()
 {
@@ -214,9 +220,14 @@ void ANGGChunk::MarchCube(FVector Position)
 	if (TableIndex == 0 || TableIndex == 255)
 		return;
 
+	// temporarily store the individual vertices so that we can calculate correct normals!
+	TArray<int32> VerticesForTriangle;
+	
 	int32 EdgeIdx = 0;
 	for (int iTriangle = 0; iTriangle < 5; ++iTriangle) {
-		for (int iVertex = 0; iVertex < 3; ++iVertex) {
+		VerticesForTriangle.Empty();
+		int iVertex = 0;
+		for (iVertex; iVertex < 3; ++iVertex) {
 
 			// Get the current indice. We increment triangleIndex through each loop.
 			int TriIndex = TriangleTable[255 - TableIndex][EdgeIdx];
@@ -255,12 +266,31 @@ void ANGGChunk::MarchCube(FVector Position)
 			// Add to our vertices and triangles list and incremement the edgeIndex.
 			Vertices.Add(VertexPosition);
 			Triangles.Add(Vertices.Num() - 1);
-			Normals.Add(FVector(0, 0, 1));
 			UVs.Add(FVector2D(((int32)VertexPosition.X % (int32)(Extent.X + 1)) / (Extent.X + 1), ((int32)VertexPosition.Y % (int32)(Extent.Y + 1)) / (Extent.Y + 1)));
 			FProcMeshTangent tangent(FVector(1, 0, 0), false);
 			Tangents.Add(tangent);
 			VertexColors.Add(FColor(1, 1, 1));
 			EdgeIdx++;
+
+			// Temp storage for the triangle
+			VerticesForTriangle.Add(Vertices.Num() - 1);
+		}
+
+		// Now that we've added the vertices, we need to calculate correct normals
+		if (VerticesForTriangle.Num() > 0 && VerticesForTriangle.Num() % 3 == 0)
+		{
+			FVector Point1 = Vertices[VerticesForTriangle.Pop()];
+			FVector Point2 = Vertices[VerticesForTriangle.Pop()];
+			FVector Point3 = Vertices[VerticesForTriangle.Pop()];
+
+			FVector P12 = Point2 - Point1;
+			FVector P13 = Point3 - Point1;
+
+			FVector Normal = FVector::CrossProduct(P12, P13);
+			Normal.Normalize();
+			Normals.Add(Normal);
+			Normals.Add(Normal);
+			Normals.Add(Normal);
 
 		}
 	}
