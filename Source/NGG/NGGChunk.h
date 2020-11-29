@@ -41,7 +41,7 @@ public:
 	// Whether the terrain is smooth or snapped to TerrainSurface
 	UPROPERTY(EditAnywhere, BlueprintReadWrite, Category = "NGG_Chunk")
 		bool bUseSmoothSurface = true;
-
+	
 
 	///////////////////////////////
 	// VOXEL DATA
@@ -49,8 +49,6 @@ public:
 		TArray<float> VoxelData;
 	UPROPERTY(BlueprintReadOnly)
 		int32 VoxelDataLength;
-	UPROPERTY(BlueprintReadOnly)
-		bool bVoxelDataSetup = false;
 
 	// Call this function if you want to edit terrain using the NGGChunkManager
 	// This results in the following effects:
@@ -95,7 +93,8 @@ protected:
 	// Construction
 	virtual void OnConstruction(const FTransform& Transform) override;
 
-	void ItlSetup(bool bDestroyIfNecessary);
+	//returns whether this chunk is already setup correctly
+	bool ItlSetup(bool bDestroyIfNecessary);
 
 	void ItlClearMeshData();
 

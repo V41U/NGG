@@ -12,11 +12,17 @@
 
 //TODOs:
 // Notify ChunkManager of destruction (or somehow manage to allow chunks to be deleted without a warning in the editor!)
+//	Or change the way the chunkmanager stores references so that one can delete a chunk without a warning
+// Performance updates: 
 
-// Calculate correct UVs (current are only dependant on X-&Y-Position in comparison to Extent
 // Maybe: Create a SaveChunk function?
+//	Problem with this: there's no general consens how to store data. T
+//	There's direct access to the voxel data which should be enough technically
 
 // Done but needs testing: 
+
+// Calculate correct UVs (current are only dependant on X-&Y-Position in comparison to Extent
+//	Technically the UVs are somwhat correct (not fully i think); One needs trilinear mapping to get rid of the tearing
 
 //	Expose the GenerateRandomizedMesh function better so that the actor can have its generation overwritten
 //		see: SamplePosition function which can be overridden in Blueprints
@@ -149,9 +155,11 @@ void ANGGChunk::BeginPlay()
 {
 	Super::BeginPlay();
 	
-
-	ItlSetup(true);
-	GenerateRandomizedMesh();
+	// Only regenerate if there's something not setup correctly
+	// This should help testing with large chunks or large number of chunks
+	// since theres only one generation necessary and not each BeginPlay call
+	if(!ItlSetup(true))
+		GenerateRandomizedMesh();
 }
 
 void ANGGChunk::OnConstruction(const FTransform & Transform)
@@ -174,9 +182,6 @@ void ANGGChunk::OnConstruction(const FTransform & Transform)
 		if (IsValid(ChunkManager) && !ChunkManager->IsRegistered(GetFName()))
 			ChunkManager->RegisterChunk(GetFName(), this);
 	}
-
-	bVoxelDataSetup = false;
-
 
 }
 
@@ -314,21 +319,23 @@ void ANGGChunk::SetVoxelData(TArray<float> NewVoxelData)
 }
 
 
-void ANGGChunk::ItlSetup(bool bDestroyIfNecessary)
+bool ANGGChunk::ItlSetup(bool bDestroyIfNecessary)
 {
+	bool bVoxelDataSetup = VoxelDataLength == (Extent.X / CubeResolution.X + 1) * (Extent.Y / CubeResolution.Y + 1) * (Extent.Z / CubeResolution.Z + 1);
+	bVoxelDataSetup = bVoxelDataSetup && VoxelData.Num() == VoxelDataLength;
+
+	bool bValidSetup = (Extent.X % CubeResolution.X) == 0;
+	bValidSetup = bValidSetup && (Extent.Y % CubeResolution.Y) == 0;
+	bValidSetup = bValidSetup && (Extent.Z % CubeResolution.Z) == 0;
+
 	if (!bVoxelDataSetup)
 	{
-		bool bSetup = (Extent.X % CubeResolution.X) == 0;
-		bSetup = bSetup && (Extent.Y % CubeResolution.Y) == 0;
-		bSetup = bSetup && (Extent.Z % CubeResolution.Z) == 0;
-
-		if (bSetup)
+		if (bValidSetup)
 		{
 			Increment = FIntVector(FVector(Extent) / FVector(CubeResolution));
 			VoxelDataLength = (Extent.X / CubeResolution.X + 1) * (Extent.Y / CubeResolution.Y + 1) * (Extent.Z / CubeResolution.Z + 1);
 			VoxelData.Empty();
 			VoxelData.SetNum(VoxelDataLength);
-			bVoxelDataSetup = true;
 		}
 		else
 		{
@@ -337,6 +344,19 @@ void ANGGChunk::ItlSetup(bool bDestroyIfNecessary)
 				Destroy();
 		}
 	}
+	else
+	{
+		if (bValidSetup)
+		{
+			// only this scenario should return true
+			// otherwise the chunk is either not correctly setup
+			// or has not been setup at all
+			return true;
+		}
+	}
+
+	// default return value
+	return false;
 }
 
 void ANGGChunk::ItlClearMeshData()
